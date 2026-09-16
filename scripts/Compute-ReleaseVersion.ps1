@@ -2,6 +2,24 @@
 # Writes version and skip outputs for GitHub Actions.
 $ErrorActionPreference = 'Stop'
 
+function Test-GitRef {
+  param([string]$Ref)
+  git rev-parse -q --verify $Ref 2>$null | Out-Null
+  return ($LASTEXITCODE -eq 0)
+}
+
+function Set-GitHubOutput {
+  param([hashtable]$Values)
+  if (-not $env:GITHUB_OUTPUT) {
+    return
+  }
+
+  $lines = foreach ($key in $Values.Keys) {
+    "{0}={1}" -f $key, $Values[$key]
+  }
+  Add-Content -Path $env:GITHUB_OUTPUT -Value $lines -Encoding utf8
+}
+
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $projectFile = Join-Path $repoRoot 'Dh360dFeed.csproj'
 
@@ -16,20 +34,14 @@ $csprojVersion = [version][string]$csprojVersionText
 Push-Location $repoRoot
 try {
   $latestTag = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
-
-  $ErrorActionPreference = 'SilentlyContinue'
-  $head = git rev-parse --verify HEAD 2>$null
-  if ($LASTEXITCODE -ne 0) { $head = $null }
-  $ErrorActionPreference = 'Stop'
+  $head = if (Test-GitRef 'HEAD') { git rev-parse HEAD } else { $null }
 
   if ($latestTag -and $head) {
     $tagVersion = [version]$latestTag.TrimStart('v')
     $tagCommit = git rev-list -n 1 $latestTag 2>$null
     if ($tagCommit -eq $head) {
       Write-Host "HEAD already tagged as $latestTag - skipping release."
-      if ($env:GITHUB_OUTPUT) {
-        "skip=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-      }
+      Set-GitHubOutput @{ skip = 'true' }
       exit 0
     }
 
@@ -45,22 +57,17 @@ try {
   $version = "$($next.Major).$($next.Minor).$($next.Build)"
   $tag = "v$version"
 
-  $ErrorActionPreference = 'SilentlyContinue'
-  git rev-parse -q --verify "refs/tags/$tag" 2>$null | Out-Null
-  $tagExists = ($LASTEXITCODE -eq 0)
-  $ErrorActionPreference = 'Stop'
-  if ($tagExists) {
+  if (Test-GitRef "refs/tags/$tag") {
     throw "Tag $tag already exists but points to a different commit."
   }
 
   Write-Host "Next release: $tag"
-  if ($env:GITHUB_OUTPUT) {
-    "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-    "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-    "skip=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-  } else {
-    Write-Output $version
+  Set-GitHubOutput @{
+    version = $version
+    tag     = $tag
+    skip    = 'false'
   }
+  exit 0
 } finally {
   Pop-Location
 }
