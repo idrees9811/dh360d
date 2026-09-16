@@ -56,6 +56,9 @@ dotnet publish $project -c Release -r win-x64 -o $publish --nologo `
   /p:Version=$Version `
   /p:AssemblyVersion=$assemblyVersion `
   /p:FileVersion=$assemblyVersion
+if ($LASTEXITCODE -ne 0) {
+  throw "dotnet publish failed with exit code $LASTEXITCODE"
+}
 
 $exe = Join-Path $publish 'DH360D.exe'
 if (-not (Test-Path $exe)) { throw "Build failed - $exe not found" }
