@@ -6,6 +6,16 @@ Works as a system tray app with a settings UI, optional Windows startup, and a o
 
 Protocol reference: https://github.com/clarkse/dh360d
 
+## Compatibility fixes vs the official Darkflash app
+
+| Issue | Official Darkflash app | DH360D |
+|-------|------------------------|--------|
+| RPM gauge on **MSI B850** boards | Often blank / 0 RPM | Works — reads fan RPM via LibreHardwareMonitor + PawnIO |
+
+On some MSI B850 setups the stock Darkflash software never populates the RPM field on the pump LCD. DH360D reads radiator/case fan tach from the motherboard (default) or pump tach (Settings → **RPM on LCD**), so the gauge should show a live value after PawnIO is installed and the correct COM port is saved.
+
+If RPM is still 0, open **Settings**, try **Radiator / case fan** vs **Pump tachometer**, run **Diagnostics** from the tray menu (`DH360D.exe sensors`), and confirm PawnIO is installed.
+
 ## Why you might see warnings while the LCD still works
 
 The pump LCD has four visible fields: temperature, one RPM gauge, CPU %, and RAM %.
@@ -110,12 +120,14 @@ Quit the tray app before rebuilding - `publish\DH360D.exe` is locked while runni
 
 ## Releases (CI/CD)
 
-Every push to `main` automatically builds, tags, and publishes a GitHub Release.
+Pushes to `main` that change build inputs (`src/`, `assets/`, `installer/`, `build.ps1`, `Dh360dFeed.csproj`, vendor submodule, etc.) automatically build, tag, and publish a GitHub Release. **Docs-only commits** (e.g. README, LICENSE) skip the release job — no version bump.
 
 | Action | Result |
 |--------|--------|
-| Push to `main` | Minor version auto-increments (`v1.0.0` → `v1.1.0` → `v1.2.0`) |
+| Push code/build files to `main` | Minor version auto-increments (`v1.0.0` → `v1.1.0` → `v1.2.0`) |
 | Edit `<Version>` in `Dh360dFeed.csproj` to `2.0.0`, then push | Major release `v2.0.0` |
+| Push README/docs only | Release skipped |
+| **Actions → Release → Run workflow** | Manual release on demand |
 
 **Manual major bump:** change `<Version>1.0.0</Version>` to `<Version>2.0.0</Version>` in [`Dh360dFeed.csproj`](Dh360dFeed.csproj) before pushing. CI detects the new major and resets the release line. You do not need to edit the installer script or create tags manually.
 

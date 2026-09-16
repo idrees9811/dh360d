@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,7 +13,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            build:
+              - 'src/**'
+              - 'assets/**'
+              - 'installer/**'
+              - 'scripts/**'
+              - 'Dh360dFeed.csproj'
+              - 'app.manifest'
+              - 'build.ps1'
+              - 'vendor/**'
+              - '.gitmodules'
+
   release:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
