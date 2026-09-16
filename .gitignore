@@ -1,0 +1,14 @@
+# Publish output
+publish/
+dist/
+bin/
+obj/
+
+# Downloaded at build time
+driver/PawnIO_setup.exe
+
+# User config (local only)
+*.user
+
+# SignalRGB plugin (not part of core release)
+signalrgb.js
